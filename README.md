@@ -1,1 +1,1 @@
-# nav-log-analyzer
+# navi-log-analyzer
