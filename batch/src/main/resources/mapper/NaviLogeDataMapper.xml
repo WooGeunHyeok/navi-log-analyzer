@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.navi.loganalyzer.batch.mapper.NaviLogeDataMapper">
+
+    <!-- 배치 처리를 위한 Bulk Insert 쿼리 -->
+    <insert id="insertNaviLogeDataList" parameterType="java.util.List">
+        INSERT INTO tbl_log_dictionary (
+                FILE_NAME,
+                FILE_PATH,
+                FUNCTION_NAME,
+                LINE_NUMBER,
+                LOG_TYPE,
+                RAW_MESSAGE,
+                PATTERN_MESSAGE,
+                STATUS,
+                INSDATE,
+                UPDDATE
+        ) VALUES
+      <foreach collection="list" item="item" separator=",">
+      (
+            #{item.fileName},
+            #{item.filePath},
+            #{item.functionName},
+            #{item.lineNumber},
+            #{item.logType},
+            #{item.rawMessage},
+            #{item.patternMessage},
+            'ACTIVE',
+            NOW(),
+            NULL
+      )
+      </foreach>
+      ON DUPLICATE KEY UPDATE
+           FILE_NAME = VALUES(FILE_NAME),
+           FILE_PATH = VALUES(FILE_PATH),
+           FUNCTION_NAME = VALUES(FUNCTION_NAME),
+           LINE_NUMBER = VALUES(LINE_NUMBER),
+           LOG_TYPE = VALUES(LOG_TYPE),
+           RAW_MESSAGE = VALUES(RAW_MESSAGE),
+           STATUS = 'ACTIVE',
+           PATTERN_MESSAGE = VALUES(PATTERN_MESSAGE),
+           UPDDATE = NOW()
+    </insert>
+
+    <!-- 단건 Insert 쿼리 -->
+    <insert id="insertNaviLogeData" parameterType="com.navi.loganalyzer.batch.entity.NaviLogeData">
+        INSERT INTO tbl_log_dictionary (
+            FILE_NAME,
+            FILE_PATH,
+            FUNCTION_NAME,
+            LINE_NUMBER,
+            LOG_TYPE,
+            RAW_MESSAGE,
+            PATTERN_MESSAGE,
+            INSDATE
+        ) VALUES (
+            #{item.fileName},
+            #{item.filePath},
+            #{item.functionName},
+            #{item.lineNumber},
+            #{item.logType},
+            #{item.rawMessage},
+            #{item.patternMessage},
+            NOW()
+        )
+    </insert>
+
+    <!-- 사라진 로그 소프트 삭제 (배치 마지막 단계 Tasklet에서 사용 -->
+    <update id="updateOrphanLogsToDeleted" parameterType="java.time.LocalDateTime">
+        UPDATE tbl_log_dictionary
+        SET
+            STATUS = 'DELETED',
+            UPDDATE = NOW()
+        WHERE STATUS = 'ACTIVE'
+        AND (
+            (UPDDATE IS NOT NULL AND UPDDATE &lt; #{jobExecutionTime})
+        OR  (UPDDATE IS NULL AND INSDATE &lt; #{jobExecutionTime})
+            )
+    </update>
+</mapper>
