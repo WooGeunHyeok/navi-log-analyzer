@@ -1,0 +1,50 @@
+package com.navi.loganalyzer.backend.global.response;
+
+import com.navi.loganalyzer.backend.global.exception.ErrorCode;
+import lombok.Getter;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+@Getter
+public class ErrorResponse {
+
+    /**
+     * 예외 발생 시 GlobalExceptionHandler 가 에러 정보만 담아 벼노한할 때 사용하는 표준 에러 응답 개체.
+     */
+
+    private final LocalDateTime timestamp;
+    private final int status;
+    private final String code;
+    private final String message;
+    private final List<FieldError> errors;
+
+    private ErrorResponse(ErrorCode errorCode, List<FieldError> errors) {
+        this.timestamp = LocalDateTime.now();
+        this.status = errorCode.getStatus().value();
+        this.code = errorCode.getCode();
+        this.message = errorCode.getMessage();
+        this.errors = errors;
+    }
+
+    public static ErrorResponse of(ErrorCode errorCode) {
+        return new ErrorResponse(errorCode, List.of());
+    }
+
+    public static ErrorResponse of(ErrorCode errorCode, List<FieldError> errors) {
+        return new ErrorResponse(errorCode, errors);
+    }
+
+    @Getter
+    public static class FieldError {
+        private final String field;
+        private final String value;
+        private final String reason;
+
+        public FieldError(String field, String value, String reason) {
+            this.field = field;
+            this.value = value;
+            this.reason = reason;
+        }
+    }
+}
