@@ -23,9 +23,10 @@ public class ParsingController {
     @PostMapping("/{logFileId}")
     public ResponseEntity<ApiResponse<Long>> parseLogFile(
             @PathVariable("logFileId") Long logFileId) {
-        parsingLogService.parsingAndSaveLogFile(logFileId);
 
-        return ResponseEntity.ok(ApiResponse.ok("로그 파일 파싱이 완료되었습니다.", logFileId));
+        Long ParsingFileId = parsingLogService.parsingAndSaveLogFile(logFileId);
+
+        return ResponseEntity.ok(ApiResponse.ok("로그 파일 파싱이 완료되었습니다.", ParsingFileId));
     }
 
     /**

@@ -37,7 +37,7 @@ public class ParsingLogService {
 
     // 업로드 된 로그 파일을 읽어 파싱 및 DB  저장 수행
     @Transactional
-    public void parsingAndSaveLogFile(Long logFileId) {
+    public Long parsingAndSaveLogFile(Long logFileId) {
         LogFileUpload logFile = logFileUploadRepository.findById(logFileId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 로그 파일 입니다."));
 
@@ -94,6 +94,8 @@ public class ParsingLogService {
             // 3. 파싱 결과 일괄 저장
             parsingLogRepository.saveAll(parsedLogs);
             log.info("로그 파일 파싱 완료 - 파일 ID: {}, 총 파싱 라인 수: {}", logFileId, parsedLogs.size());
+
+            return logFile.getId();
 
         } catch (IOException e) {
             log.error("로그 파일 읽기 중 오류 발생", e);
