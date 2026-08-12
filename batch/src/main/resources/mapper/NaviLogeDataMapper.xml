@@ -14,6 +14,7 @@
                 LOG_TYPE,
                 RAW_MESSAGE,
                 PATTERN_MESSAGE,
+                CALLS,
                 STATUS,
                 INSDATE,
                 UPDDATE
@@ -27,6 +28,7 @@
             #{item.logType},
             #{item.rawMessage},
             #{item.patternMessage},
+            #{item.calls},
             'ACTIVE',
             NOW(),
             NULL
@@ -41,6 +43,7 @@
            RAW_MESSAGE = VALUES(RAW_MESSAGE),
            STATUS = 'ACTIVE',
            PATTERN_MESSAGE = VALUES(PATTERN_MESSAGE),
+           CALLS = VALUES(CALLS),
            UPDDATE = NOW()
     </insert>
 
@@ -54,6 +57,7 @@
             LOG_TYPE,
             RAW_MESSAGE,
             PATTERN_MESSAGE,
+            CALLS,
             INSDATE
         ) VALUES (
             #{item.fileName},
@@ -63,6 +67,7 @@
             #{item.logType},
             #{item.rawMessage},
             #{item.patternMessage},
+            #{item.calls},
             NOW()
         )
     </insert>

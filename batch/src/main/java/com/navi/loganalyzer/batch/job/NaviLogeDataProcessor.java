@@ -3,7 +3,7 @@ package com.navi.loganalyzer.batch.job;
 import com.navi.loganalyzer.batch.entity.NaviLogeData;
 import com.navi.loganalyzer.batch.job.dto.NaviLogeDataDto;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.batch.infrastructure.item.ItemProcessor;
+import org.springframework.batch.item.ItemProcessor;
 import org.springframework.stereotype.Component;
 
 @Slf4j
