@@ -1,9 +1,9 @@
-package com.navi.loganalyzer.backend.domain.log.service;
+package com.navi.loganalyzer.backend.domain.logupload.service;
 
-import com.navi.loganalyzer.backend.domain.log.dto.LogFileUploadRequestDto;
-import com.navi.loganalyzer.backend.domain.log.entity.LogFileUpload;
-import com.navi.loganalyzer.backend.domain.log.entity.ProcessStatus;
-import com.navi.loganalyzer.backend.domain.log.repository.LogFileUploadRepository;
+import com.navi.loganalyzer.backend.domain.logupload.dto.LogFileUploadRequestDto;
+import com.navi.loganalyzer.backend.domain.logupload.entity.LogFileUpload;
+import com.navi.loganalyzer.backend.domain.logupload.entity.ProcessStatus;
+import com.navi.loganalyzer.backend.domain.logupload.repository.LogFileUploadRepository;
 import com.navi.loganalyzer.backend.global.exception.CustomException;
 import com.navi.loganalyzer.backend.global.exception.ErrorCode;
 import org.springframework.beans.factory.annotation.Value;
@@ -62,7 +62,7 @@ public class LogFileUploadService {
             LogFileUpload logFile = LogFileUpload.builder()
                     .title(requestDto.getTitle())
                     .jiraTicketKey(requestDto.getJiraTicketKey())
-                    .fileName(originalFilename)
+                    .originalFileName(originalFilename)
                     .storedFilePath(targetPath.toString())
                     .fileSize(file.getSize())
                     .status(ProcessStatus.PENDING)

@@ -1,4 +1,4 @@
-package com.navi.loganalyzer.backend.domain.log.entity;
+package com.navi.loganalyzer.backend.domain.logupload.entity;
 
 public enum ProcessStatus {
 

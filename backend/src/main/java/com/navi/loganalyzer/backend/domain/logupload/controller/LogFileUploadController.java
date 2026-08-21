@@ -1,7 +1,7 @@
-package com.navi.loganalyzer.backend.domain.log.controller;
+package com.navi.loganalyzer.backend.domain.logupload.controller;
 
-import com.navi.loganalyzer.backend.domain.log.dto.LogFileUploadRequestDto;
-import com.navi.loganalyzer.backend.domain.log.service.LogFileUploadService;
+import com.navi.loganalyzer.backend.domain.logupload.dto.LogFileUploadRequestDto;
+import com.navi.loganalyzer.backend.domain.logupload.service.LogFileUploadService;
 import com.navi.loganalyzer.backend.global.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

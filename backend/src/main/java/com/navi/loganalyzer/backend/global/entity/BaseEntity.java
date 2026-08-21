@@ -21,9 +21,9 @@ public abstract class BaseEntity {
 
     @CreatedDate
     @Column(updatable = false, nullable = false)
-    private LocalDateTime INSDDATE;
+    private LocalDateTime INSDATE;
 
     @LastModifiedDate
     @Column(nullable = false)
-    private LocalDateTime UPPDATE;
+    private LocalDateTime UPDDATE;
 }

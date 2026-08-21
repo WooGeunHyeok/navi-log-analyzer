@@ -1,7 +1,7 @@
-package com.navi.loganalyzer.backend.domain.log.repository;
+package com.navi.loganalyzer.backend.domain.logupload.repository;
 
-import com.navi.loganalyzer.backend.domain.log.entity.LogFileUpload;
-import com.navi.loganalyzer.backend.domain.log.entity.ProcessStatus;
+import com.navi.loganalyzer.backend.domain.logupload.entity.LogFileUpload;
+import com.navi.loganalyzer.backend.domain.logupload.entity.ProcessStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

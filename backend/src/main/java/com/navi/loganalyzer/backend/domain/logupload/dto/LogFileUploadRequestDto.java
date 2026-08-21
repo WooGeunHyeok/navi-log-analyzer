@@ -1,4 +1,4 @@
-package com.navi.loganalyzer.backend.domain.log.dto;
+package com.navi.loganalyzer.backend.domain.logupload.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
