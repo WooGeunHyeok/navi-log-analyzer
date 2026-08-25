@@ -20,4 +20,5 @@ public class NaviLogeData extends BaseEntity {
     private String logType;             // 로그 타입 (ZLOG, ZLOGA, LOGE)
     private String rawMessage;          // 원본 로그 메시지
     private String patternMessage;      // DB 매칭용 정규식 패턴 (.* 변환 메시지)
+    private String calls;               // 하위 호출 함수/심볼 목록
 }
