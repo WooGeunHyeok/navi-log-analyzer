@@ -1,8 +1,7 @@
 package com.navi.loganalyzer.backend.domain.parsing.service;
 
-import com.navi.loganalyzer.backend.domain.log.entity.LogFileUpload;
-import com.navi.loganalyzer.backend.domain.log.repository.LogFileUploadRepository;
-import com.navi.loganalyzer.backend.domain.parsing.dto.ParsingLogFlowResponseDto;
+import com.navi.loganalyzer.backend.domain.logupload.entity.LogFileUpload;
+import com.navi.loganalyzer.backend.domain.logupload.repository.LogFileUploadRepository;
 import com.navi.loganalyzer.backend.domain.parsing.entity.LogLayer;
 import com.navi.loganalyzer.backend.domain.parsing.entity.ParsingLog;
 import com.navi.loganalyzer.backend.domain.parsing.repository.ParsingLogRepository;
@@ -46,52 +45,71 @@ public class ParsingLogService {
             throw new IllegalStateException("실제 파일이 저장 경로에 존재하지 않습니다. : " + logFile.getStoredFilePath());
         }
 
-        List<ParsingLog> parsedLogs = new ArrayList<>();
-        // Thread ID별 depth 관리
-        Map<Long, Long> threadDepthMap = new HashMap<>();
-
-        long step = 1L;
+        // Thread ID별로 "아직 함수 태그를 못 받은 마지막 메시지 줄"을 기억해뒀다가,
+        // 같은 스레드에서 뒤이어 나오는 "태그 전용 줄"을 만나면 그 줄에 소급 병합한다.
+        // 예) "CPlatformAndroid::mPostMessage() - type(...)" 줄 다음에 " [mPostMessage,1343]" 줄만 따로 찍히는 케이스
+        Map<Long, ParsedLine> pendingTagByThread = new HashMap<>();
+        List<ParsedLine> parsedLines = new ArrayList<>();
 
         try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
             String line;
             while ((line = reader.readLine()) != null) {
                 Matcher matcher = LOG_PATTERN.matcher(line);
-                if (matcher.matches()) {
-                    String timestamp = matcher.group(1);
-                    Long threadId = Long.parseLong(matcher.group(3));
-                    String logLevel = matcher.group(4);
-                    String tag = matcher.group(5);
-                    String rawMessage = matcher.group(6);
-                    String functionName = matcher.group(7);
-                    Long lineNum = matcher.group(8) != null ? Long.parseLong(matcher.group(8)) : null;
-
-                    // 1. Layer 판별
-                    LogLayer layer = determineLayer(tag);
-
-                    if (layer == null) {
-                        continue;
-                    }
-                    // 2. Thread ID별 Depth 계산
-                    Long currentDepth = calculateDepth(threadDepthMap, threadId, rawMessage);
-
-                    ParsingLog parsingLog = ParsingLog.builder()
-                            .logFile(logFile)
-                            .step(step++)
-                            .timestamp(timestamp)
-                            .threadId(threadId)
-                            .logLevel(logLevel)
-                            .layer(layer)
-                            .functionName(functionName)
-                            .lineNum(lineNum)
-                            .rawMessage(rawMessage)
-                            .depth(currentDepth)
-                            .build();
-
-                    parsedLogs.add(parsingLog);
+                if (!matcher.matches()) {
+                    continue;
                 }
+
+                String timestamp = matcher.group(1);
+                Long threadId = Long.parseLong(matcher.group(3));
+                String logLevel = matcher.group(4);
+                String tag = matcher.group(5);
+                String rawMessage = matcher.group(6);
+                String functionName = matcher.group(7);
+                Integer lineNum = matcher.group(8) != null ? Integer.parseInt(matcher.group(8)) : null;
+
+                // 1. Layer 판별
+                LogLayer layer = determineLayer(tag);
+                if (layer == null) {
+                    continue;
+                }
+
+                // 2. 메시지 없이 함수/라인 태그만 있는 줄인지 판별
+                boolean isTagOnlyLine = (rawMessage == null || rawMessage.isBlank()) && functionName != null;
+
+                if (isTagOnlyLine) {
+                    ParsedLine pending = pendingTagByThread.get(threadId);
+                    if (pending != null && pending.functionName == null) {
+                        pending.functionName = functionName;
+                        pending.lineNum = lineNum;
+                    }
+                    // 태그 전용 줄 자체는 별도 로그 row로 남기지 않음 (STEP 부여 안 함)
+                    continue;
+                }
+
+                ParsedLine parsedLine = new ParsedLine(timestamp, threadId, logLevel, layer,
+                        rawMessage, functionName, lineNum);
+                parsedLines.add(parsedLine);
+                pendingTagByThread.put(threadId, parsedLine);
             }
 
-            // 3. 파싱 결과 일괄 저장
+            // 4. 병합이 끝난 결과를 ParsingLog 엔티티로 변환 (STEP은 실제 저장되는 줄에만 순서대로 부여)
+            List<ParsingLog> parsedLogs = new ArrayList<>();
+            long step = 1L;
+            for (ParsedLine parsedLine : parsedLines) {
+                parsedLogs.add(ParsingLog.builder()
+                        .logFile(logFile)
+                        .step(step++)
+                        .timestamp(parsedLine.timestamp)
+                        .threadId(parsedLine.threadId)
+                        .logLevel(parsedLine.logLevel)
+                        .layer(parsedLine.layer)
+                        .functionName(parsedLine.functionName)
+                        .lineNum(parsedLine.lineNum)
+                        .rawMessage(parsedLine.rawMessage)
+                        .build());
+            }
+
+            // 5. 파싱 결과 일괄 저장
             parsingLogRepository.saveAll(parsedLogs);
             log.info("로그 파일 파싱 완료 - 파일 ID: {}, 총 파싱 라인 수: {}", logFileId, parsedLogs.size());
 
@@ -100,6 +118,32 @@ public class ParsingLogService {
         } catch (IOException e) {
             log.error("로그 파일 읽기 중 오류 발생", e);
             throw new RuntimeException("로그 파일 파싱 실패", e);
+        }
+    }
+
+    /**
+     * 파싱 진행 중(태그 병합 완료 전) 상태를 담는 임시 객체.
+     * functionName/lineNum은 같은 스레드의 뒤이은 태그 전용 줄에 의해 나중에 채워질 수 있어 가변으로 둔다.
+     * ParsingLog 엔티티는 불변으로 유지하고, 병합이 끝난 뒤에만 엔티티로 변환한다.
+     */
+    private static class ParsedLine {
+        private final String timestamp;
+        private final Long threadId;
+        private final String logLevel;
+        private final LogLayer layer;
+        private final String rawMessage;
+        private String functionName;
+        private Integer lineNum;
+
+        private ParsedLine(String timestamp, Long threadId, String logLevel, LogLayer layer,
+                            String rawMessage, String functionName, Integer lineNum) {
+            this.timestamp = timestamp;
+            this.threadId = threadId;
+            this.logLevel = logLevel;
+            this.layer = layer;
+            this.rawMessage = rawMessage;
+            this.functionName = functionName;
+            this.lineNum = lineNum;
         }
     }
 
@@ -119,47 +163,6 @@ public class ParsingLogService {
             return LogLayer.JAVA_LAYER;
         }
         return null;
-    }
-
-    // Thread ID별 키워드 기반 Depth 계산
-    private Long calculateDepth(Map<Long, Long> threadDepthMap, Long threadId, String message) {
-        Long depth = threadDepthMap.getOrDefault(threadId, 0L);
-
-        // 함수 진입/시작 관련 키워드가 있으면 depth 증가
-        if (message.contains("- start") || message.contains("ENTER") || message.contains("start :")) {
-            depth = depth + 1L;
-            threadDepthMap.put(threadId, depth);
-        }
-        // 함수 종료/반환 관련 키워드가 있으면 depth 감소
-        else if ((message.contains("- ret") || message.contains("EXIT") || message.contains("End")) && depth > 0) {
-            depth = depth - 1L;
-            threadDepthMap.put(threadId, depth);
-        }
-
-        return depth;
-    }
-
-    // 파싱된 로그 목록을 조회하고, 소스코드 DB와 매핑하여 응답 DTO 리스트로 변환
-    @Transactional(readOnly = true)
-    public List<ParsingLogFlowResponseDto> getParsingLogFlow(Long logfileId) {
-        List<ParsingLog> parsingLogs = parsingLogRepository.findByLogFileIdOrderByStepAsc(logfileId);
-
-        return parsingLogs.stream().map(log -> {
-            // TODO : 향후 소스코드 DB Repository를 통해 functionName과 lineNum으로 실제 위치 조회
-            // String filePath = sourceCodeRepository.findFilePath(log.getFunctionName(), log.getLineNum());
-            // String mappedClass = sourceCodeRepository.findClassName(log.getFunctionName(), log.getLineNum());
-
-            String dummyMappedPath = null;
-            String dummyMappedClass = null;
-
-            // 예시: functionName이 존재할 경우 소스 위치가 매핑된 것으로 임시 가공
-            if (log.getFunctionName() != null) {
-                dummyMappedPath = "src/container/navigation/" + log.getFunctionName() + ".cpp";
-                dummyMappedClass = log.getFunctionName();
-            }
-
-            return ParsingLogFlowResponseDto.from(log, dummyMappedPath, dummyMappedClass);
-        }).toList();
     }
 }
 
