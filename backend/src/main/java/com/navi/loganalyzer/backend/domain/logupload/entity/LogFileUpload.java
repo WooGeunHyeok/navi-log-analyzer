@@ -18,19 +18,19 @@ public class LogFileUpload extends BaseEntity {
     private Long id;
 
     @Column(name = "TITLE", nullable = false, length = 100)
-    private String title;                       // 로그 제목 (예 : Return to Map 10초 타이머 후 지도 화면 자동 복귀 확인)
+    private String title;
 
     @Column(name = "JIRA_TICKET_KEY", length = 50)
-    private String jiraTicketKey;               // 티켓 번호 (예 : INDIAPIOUP-4922)
+    private String jiraTicketKey;
 
     @Column(name = "ORIGINAL_FILE_NAME" ,nullable = false)
-    private String originalFileName;                    // 업로드 된 파일 명
+    private String originalFileName;
 
     @Column(name = "STORED_FILE_PATH", nullable = false)
-    private String storedFilePath;              // 서버 디스크에 저장된 실제 파일 경로
+    private String storedFilePath;
 
     @Column(name = "FILE_SIZE", nullable = false)
-    private Long fileSize;                      // 업로드 된 파일 크기 (bytes)
+    private Long fileSize;
 
     @Column(name = "STATUS", nullable = false)
     private ProcessStatus status;
