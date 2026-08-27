@@ -1,121 +1,67 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useReducer } from 'react'
+import UploadForm from './components/UploadForm.jsx'
+import ProcessingStatus from './components/ProcessingStatus.jsx'
+import AnalysisResultView from './components/AnalysisResultView.jsx'
+import ErrorBanner from './components/ErrorBanner.jsx'
+import { uploadLogFile, runParsing, runAnalysisFlow } from './api/logAnalyzer.js'
+import styles from './App.module.css'
+
+const initialState = {
+  step: 'upload',
+  subStep: null,
+  fileId: null,
+  treeData: null,
+  error: null,
+}
+
+function reducer(state, action) {
+  switch (action.type) {
+    case 'SUBMIT_UPLOAD':
+      return { ...initialState, step: 'processing', subStep: 'uploading' }
+    case 'UPLOAD_SUCCESS':
+      return { ...state, fileId: action.fileId, subStep: 'parsing' }
+    case 'PARSE_SUCCESS':
+      return { ...state, subStep: 'analyzing' }
+    case 'ANALYZE_SUCCESS':
+      return { ...state, step: 'result', subStep: null, treeData: action.treeData }
+    case 'FAIL':
+      return { ...state, step: 'error', subStep: null, error: action.message }
+    case 'RESET':
+      return initialState
+    default:
+      return state
+  }
+}
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [state, dispatch] = useReducer(reducer, initialState)
+
+  async function handleUploadSubmit(formValues) {
+    dispatch({ type: 'SUBMIT_UPLOAD' })
+    try {
+      const fileId = await uploadLogFile(formValues)
+      dispatch({ type: 'UPLOAD_SUCCESS', fileId })
+      await runParsing(fileId)
+      dispatch({ type: 'PARSE_SUCCESS' })
+      const treeData = await runAnalysisFlow(fileId)
+      dispatch({ type: 'ANALYZE_SUCCESS', treeData })
+    } catch (err) {
+      dispatch({ type: 'FAIL', message: err.message })
+    }
+  }
+
+  function handleRetry() {
+    dispatch({ type: 'RESET' })
+  }
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+    <main className={styles.app}>
+      <h1 className={styles.title}>내비 로그 소스코드 흐름도</h1>
+      {state.step === 'upload' && <UploadForm onSubmit={handleUploadSubmit} />}
+      {state.step === 'processing' && <ProcessingStatus subStep={state.subStep} />}
+      {state.step === 'result' && <AnalysisResultView treeData={state.treeData} />}
+      {state.step === 'error' && <ErrorBanner message={state.error} onRetry={handleRetry} />}
+    </main>
   )
 }
 
