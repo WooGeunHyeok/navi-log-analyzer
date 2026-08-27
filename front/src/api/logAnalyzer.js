@@ -15,6 +15,16 @@ async function parseApiResponse(response) {
   return body.data
 }
 
+async function fetchJson(url, options) {
+  let response
+  try {
+    response = await fetch(url, options)
+  } catch {
+    throw new Error('서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.')
+  }
+  return parseApiResponse(response)
+}
+
 export async function uploadLogFile({ title, jiraTicketKey, file }) {
   const formData = new FormData()
   formData.append('file', file)
@@ -23,21 +33,18 @@ export async function uploadLogFile({ title, jiraTicketKey, file }) {
     new Blob([JSON.stringify({ title, jiraTicketKey })], { type: 'application/json' }),
   )
 
-  const response = await fetch(`${BASE_URL}/api/v1/logs/upload`, {
+  return fetchJson(`${BASE_URL}/api/v1/logs/upload`, {
     method: 'POST',
     body: formData,
   })
-  return parseApiResponse(response)
 }
 
 export async function runParsing(fileId) {
-  const response = await fetch(`${BASE_URL}/api/v1/parsing/${fileId}`, {
+  return fetchJson(`${BASE_URL}/api/v1/parsing/${fileId}`, {
     method: 'POST',
   })
-  return parseApiResponse(response)
 }
 
 export async function runAnalysisFlow(fileId) {
-  const response = await fetch(`${BASE_URL}/api/v1/logs/analysis/flow/${fileId}`)
-  return parseApiResponse(response)
+  return fetchJson(`${BASE_URL}/api/v1/logs/analysis/flow/${fileId}`)
 }

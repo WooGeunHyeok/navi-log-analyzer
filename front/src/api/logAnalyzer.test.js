@@ -88,4 +88,13 @@ describe('runAnalysisFlow', () => {
 
     await expect(runAnalysisFlow(42)).rejects.toThrow('500')
   })
+
+  it('네트워크 연결 자체가 실패하면 사용자 친화적인 에러 메시지를 던진다', async () => {
+    const fetchMock = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(runAnalysisFlow(42)).rejects.toThrow(
+      '서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.',
+    )
+  })
 })
