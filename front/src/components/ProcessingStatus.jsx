@@ -10,7 +10,7 @@ function ProcessingStatus({ subStep }) {
   return (
     <div className={styles.wrapper}>
       <div className={styles.spinner} aria-hidden="true" />
-      <p className={styles.label}>{SUB_STEP_LABELS[subStep] ?? '처리 중...'}</p>
+      <p className={styles.label} aria-live="polite">{SUB_STEP_LABELS[subStep] ?? '처리 중...'}</p>
     </div>
   )
 }
