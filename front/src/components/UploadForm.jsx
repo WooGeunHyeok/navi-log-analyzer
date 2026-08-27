@@ -54,7 +54,11 @@ function UploadForm({ onSubmit }) {
         <input id="file" type="file" onChange={(event) => setFile(event.target.files[0] ?? null)} />
       </div>
 
-      {validationError && <p className={styles.error}>{validationError}</p>}
+      {validationError && (
+        <p role="alert" className={styles.error}>
+          {validationError}
+        </p>
+      )}
 
       <button type="submit" className={styles.submit}>
         분석 시작
