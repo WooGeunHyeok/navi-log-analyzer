@@ -3,7 +3,12 @@ const BASE_URL = 'http://localhost:8081'
 export const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024
 
 async function parseApiResponse(response) {
-  const body = await response.json()
+  let body
+  try {
+    body = await response.json()
+  } catch {
+    throw new Error(`요청이 실패했습니다. (status: ${response.status})`)
+  }
   if (!response.ok || !body.success) {
     throw new Error(body.message || `요청이 실패했습니다. (status: ${response.status})`)
   }

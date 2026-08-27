@@ -75,4 +75,17 @@ describe('runAnalysisFlow', () => {
 
     await expect(runAnalysisFlow(42)).rejects.toThrow('500')
   })
+
+  it('응답 본문이 JSON이 아니면 상태 코드를 포함한 에러를 던진다', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: async () => {
+        throw new SyntaxError('Unexpected token')
+      },
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(runAnalysisFlow(42)).rejects.toThrow('500')
+  })
 })
