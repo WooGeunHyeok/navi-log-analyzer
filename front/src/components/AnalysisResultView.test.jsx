@@ -93,4 +93,19 @@ describe('AnalysisResultView', () => {
     await user.click(screen.getByRole('button', { name: '전체 펼치기' }))
     expect(screen.getByText('routeInit')).toBeInTheDocument()
   })
+
+  it('검색어를 지우면 이전 펼침 상태로 복원된다', async () => {
+    const user = userEvent.setup()
+    render(<AnalysisResultView treeData={TREE} />)
+
+    await user.click(screen.getByRole('button', { name: '접기' }))
+    expect(screen.queryByText('routeInit')).not.toBeInTheDocument()
+
+    const searchInput = screen.getByLabelText('함수명 또는 파일명 검색')
+    await user.type(searchInput, 'routeInit')
+    expect(screen.getByText('routeInit')).toBeInTheDocument()
+
+    await user.clear(searchInput)
+    expect(screen.queryByText('routeInit')).not.toBeInTheDocument()
+  })
 })
