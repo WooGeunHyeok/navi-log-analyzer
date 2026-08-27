@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
 import TreeNode from './TreeNode.jsx'
+import styles from './TreeNode.module.css'
 
 function buildNode(overrides) {
   return {
@@ -45,7 +46,11 @@ describe('TreeNode', () => {
       />,
     )
 
-    expect(screen.getByText('소스 위치 매핑 안 됨')).toBeInTheDocument()
+    const unmatchedText = screen.getByText('소스 위치 매핑 안 됨')
+    expect(unmatchedText).toBeInTheDocument()
+
+    const row = unmatchedText.closest(`.${styles.row}`)
+    expect(row).toHaveClass(styles.rowUnmatched)
   })
 
   it('자식이 있으면 토글 버튼을 클릭해 접고 펼 수 있다', async () => {

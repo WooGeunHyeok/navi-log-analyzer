@@ -9,7 +9,7 @@ function TreeNode({ node, collapsedIds, forceExpanded, onToggle }) {
 
   return (
     <li className={styles.node}>
-      <div className={styles.row}>
+      <div className={isUnmatched ? `${styles.row} ${styles.rowUnmatched}` : styles.row}>
         {hasChildren ? (
           <button
             type="button"
