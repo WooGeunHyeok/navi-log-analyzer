@@ -19,7 +19,13 @@
   font: inherit;
 }
 
-.checkboxLabel {
+.matchFilterGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.filterOption {
   display: inline-flex;
   align-items: center;
   gap: 6px;

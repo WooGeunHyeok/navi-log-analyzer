@@ -44,12 +44,61 @@ const TREE = [
 ]
 
 describe('AnalysisResultView', () => {
-  it('기본적으로 트리가 전체 펼쳐진 상태로 렌더링된다', () => {
+  it('기본값은 "매핑된 노드만"이며, 매핑된 노드는 펼쳐진 상태로 보여준다', () => {
     render(<AnalysisResultView treeData={TREE} />)
+
+    expect(screen.getByLabelText('매핑된 노드만')).toBeChecked()
+    expect(screen.getByText('onCreate')).toBeInTheDocument()
+    expect(screen.getByText('routeInit')).toBeInTheDocument()
+    expect(screen.queryByText('소스 위치 매핑 안 됨')).not.toBeInTheDocument()
+  })
+
+  it('"전체"를 선택하면 매핑 안 된 노드도 함께 보여준다', async () => {
+    const user = userEvent.setup()
+    render(<AnalysisResultView treeData={TREE} />)
+
+    await user.click(screen.getByLabelText('전체'))
 
     expect(screen.getByText('onCreate')).toBeInTheDocument()
     expect(screen.getByText('routeInit')).toBeInTheDocument()
     expect(screen.getByText('소스 위치 매핑 안 됨')).toBeInTheDocument()
+  })
+
+  it('"매핑 안 된 노드만"을 선택하면 matchType=NONE 노드와 조상만 남긴다', async () => {
+    const user = userEvent.setup()
+    render(<AnalysisResultView treeData={TREE} />)
+
+    await user.click(screen.getByLabelText('매핑 안 된 노드만'))
+
+    expect(screen.getByText('onCreate')).toBeInTheDocument()
+    expect(screen.getByText('소스 위치 매핑 안 됨')).toBeInTheDocument()
+    expect(screen.queryByText('routeInit')).not.toBeInTheDocument()
+  })
+
+  it('세 필터는 서로 배타적이다 (하나만 항상 선택됨)', async () => {
+    const user = userEvent.setup()
+    render(<AnalysisResultView treeData={TREE} />)
+
+    const allRadio = screen.getByLabelText('전체')
+    const matchedRadio = screen.getByLabelText('매핑된 노드만')
+    const unmatchedRadio = screen.getByLabelText('매핑 안 된 노드만')
+
+    expect(matchedRadio).toBeChecked()
+
+    await user.click(unmatchedRadio)
+    expect(unmatchedRadio).toBeChecked()
+    expect(matchedRadio).not.toBeChecked()
+    expect(allRadio).not.toBeChecked()
+
+    await user.click(allRadio)
+    expect(allRadio).toBeChecked()
+    expect(unmatchedRadio).not.toBeChecked()
+    expect(matchedRadio).not.toBeChecked()
+
+    await user.click(matchedRadio)
+    expect(matchedRadio).toBeChecked()
+    expect(allRadio).not.toBeChecked()
+    expect(unmatchedRadio).not.toBeChecked()
   })
 
   it('검색어를 입력하면 매치되지 않는 형제는 숨기고 조상은 유지한다', async () => {
@@ -61,17 +110,6 @@ describe('AnalysisResultView', () => {
     expect(screen.getByText('onCreate')).toBeInTheDocument()
     expect(screen.getByText('routeInit')).toBeInTheDocument()
     expect(screen.queryByText('소스 위치 매핑 안 됨')).not.toBeInTheDocument()
-  })
-
-  it('"매핑 안 된 노드만" 체크 시 matchType=NONE 노드만 남긴다', async () => {
-    const user = userEvent.setup()
-    render(<AnalysisResultView treeData={TREE} />)
-
-    await user.click(screen.getByLabelText('매핑 안 된 노드만'))
-
-    expect(screen.getByText('onCreate')).toBeInTheDocument()
-    expect(screen.getByText('소스 위치 매핑 안 됨')).toBeInTheDocument()
-    expect(screen.queryByText('routeInit')).not.toBeInTheDocument()
   })
 
   it('검색 결과가 없으면 안내 문구를 보여준다', async () => {
@@ -91,6 +129,20 @@ describe('AnalysisResultView', () => {
     expect(screen.queryByText('routeInit')).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: '전체 펼치기' }))
+    expect(screen.getByText('routeInit')).toBeInTheDocument()
+  })
+
+  it('매핑 필터가 켜져 있어도 개별 노드를 접고 펼 수 있다', async () => {
+    const user = userEvent.setup()
+    render(<AnalysisResultView treeData={TREE} />)
+
+    // 기본값인 "매핑된 노드만" 필터가 켜진 상태 그대로, 검색어 없이 개별 노드를 접는다.
+    expect(screen.getByLabelText('매핑된 노드만')).toBeChecked()
+
+    await user.click(screen.getByRole('button', { name: '접기' }))
+    expect(screen.queryByText('routeInit')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '펼치기' }))
     expect(screen.getByText('routeInit')).toBeInTheDocument()
   })
 
