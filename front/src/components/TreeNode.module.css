@@ -67,6 +67,19 @@
   font-size: 12px;
 }
 
+.logLine {
+  margin: 0 0 4px 24px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text);
+  opacity: 0.75;
+  word-break: break-all;
+}
+
+.logLineUnmatched {
+  opacity: 0.5;
+}
+
 .children {
   margin: 0;
   padding-left: 22px;

@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
 import TreeNode from './TreeNode.jsx'
 import styles from './TreeNode.module.css'
+import { formatLogLine } from '../utils/formatLogLine.js'
 
 function buildNode(overrides) {
   return {
@@ -51,6 +52,36 @@ describe('TreeNode', () => {
 
     const row = unmatchedText.closest(`.${styles.row}`)
     expect(row).toHaveClass(styles.rowUnmatched)
+  })
+
+  it('원본 로그 형식(타임스탬프/스레드ID/레벨/레이어/메시지)을 노드 아래에 보여준다', () => {
+    const node = buildNode({
+      timestamp: '01-01 15:23:17.910',
+      threadId: 1542,
+      logLevel: 'E',
+      layer: 'JNI_LAYER',
+      rawMessage: 'call_java_com_mnsoft_navi_NativeCall_getNaviAutoMoveTimer entered',
+    })
+
+    const { container } = render(
+      <TreeNode node={node} collapsedIds={new Set()} forceExpanded={false} onToggle={() => {}} />,
+    )
+
+    const logLine = container.querySelector(`.${styles.logLine}`)
+    expect(logLine).not.toBeNull()
+    expect(logLine.textContent).toBe(formatLogLine(node))
+  })
+
+  it('matchType이 NONE이면 로그 줄도 흐리게 표시한다', () => {
+    const node = buildNode({ matchType: 'NONE', functionName: null, fileName: null, lineNumber: null })
+
+    const { container } = render(
+      <TreeNode node={node} collapsedIds={new Set()} forceExpanded={false} onToggle={() => {}} />,
+    )
+
+    const logLine = container.querySelector(`.${styles.logLine}`)
+    expect(logLine).toHaveClass(styles.logLineUnmatched)
+    expect(logLine.textContent).toBe(formatLogLine(node))
   })
 
   it('자식이 있으면 토글 버튼을 클릭해 접고 펼 수 있다', async () => {

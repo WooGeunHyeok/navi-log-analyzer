@@ -1,4 +1,5 @@
 import { LAYER_META } from '../constants/layers.js'
+import { formatLogLine } from '../utils/formatLogLine.js'
 import styles from './TreeNode.module.css'
 
 function TreeNode({ node, collapsedIds, forceExpanded, onToggle }) {
@@ -35,6 +36,9 @@ function TreeNode({ node, collapsedIds, forceExpanded, onToggle }) {
           </span>
         )}
       </div>
+      <p className={isUnmatched ? `${styles.logLine} ${styles.logLineUnmatched}` : styles.logLine}>
+        {formatLogLine(node)}
+      </p>
       {hasChildren && isExpanded && (
         <ul className={styles.children}>
           {node.children.map((child) => (
