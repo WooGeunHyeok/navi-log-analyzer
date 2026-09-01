@@ -4,7 +4,11 @@ import com.navi.loganalyzer.backend.domain.logupload.entity.LogFileUpload;
 import com.navi.loganalyzer.backend.domain.logupload.repository.LogFileUploadRepository;
 import com.navi.loganalyzer.backend.domain.parsing.entity.LogLayer;
 import com.navi.loganalyzer.backend.domain.parsing.entity.ParsingLog;
+import com.navi.loganalyzer.backend.domain.parsing.entity.SystemLog;
+import com.navi.loganalyzer.backend.domain.parsing.entity.SystemLogKeyword;
 import com.navi.loganalyzer.backend.domain.parsing.repository.ParsingLogRepository;
+import com.navi.loganalyzer.backend.domain.parsing.repository.SystemLogKeywordRepository;
+import com.navi.loganalyzer.backend.domain.parsing.repository.SystemLogRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -20,14 +24,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class ParsingLogService {
 
+    private static final String KEYWORD_STATUS_ACTIVE = "ACTIVE";
+
     private final ParsingLogRepository parsingLogRepository;
     private final LogFileUploadRepository logFileUploadRepository;
+    private final SystemLogRepository systemLogRepository;
+    private final SystemLogKeywordRepository systemLogKeywordRepository;
 
     // 로그 정규식 패턴
     private static final Pattern LOG_PATTERN = Pattern.compile (
@@ -45,11 +54,17 @@ public class ParsingLogService {
             throw new IllegalStateException("실제 파일이 저장 경로에 존재하지 않습니다. : " + logFile.getStoredFilePath());
         }
 
+        // 사전 조건 판별용 시스템 로그 키워드 (매 파싱마다 새로 조회 - 재배포 없이 키워드 추가 시 다음 파싱부터 바로 반영됨)
+        List<String> systemLogKeywords = systemLogKeywordRepository.findAllByStatus(KEYWORD_STATUS_ACTIVE).stream()
+                .map(k -> k.getKeyword().toLowerCase())
+                .collect(Collectors.toList());
+
         // Thread ID별로 "아직 함수 태그를 못 받은 마지막 메시지 줄"을 기억해뒀다가,
         // 같은 스레드에서 뒤이어 나오는 "태그 전용 줄"을 만나면 그 줄에 소급 병합한다.
         // 예) "CPlatformAndroid::mPostMessage() - type(...)" 줄 다음에 " [mPostMessage,1343]" 줄만 따로 찍히는 케이스
         Map<Long, ParsedLine> pendingTagByThread = new HashMap<>();
         List<ParsedLine> parsedLines = new ArrayList<>();
+        List<SystemLog> systemLogs = new ArrayList<>();
 
         try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
             String line;
@@ -70,6 +85,18 @@ public class ParsingLogService {
                 // 1. Layer 판별
                 LogLayer layer = determineLayer(tag);
                 if (layer == null) {
+                    // Container/JNI/Java가 아닌 로그는 흐름도 대상이 아니지만, 사전 조건 판별에 필요하다고
+                    // 등록된 키워드에 매칭되면 별도로 보관한다 (전부 보관하지 않아 DB 용량 부담을 줄임).
+                    if (containsAnyKeyword(rawMessage, systemLogKeywords)) {
+                        systemLogs.add(SystemLog.builder()
+                                .logFile(logFile)
+                                .timestamp(timestamp)
+                                .threadId(threadId)
+                                .logLevel(logLevel)
+                                .tag(tag != null ? tag.trim() : null)
+                                .rawMessage(rawMessage)
+                                .build());
+                    }
                     continue;
                 }
 
@@ -109,9 +136,15 @@ public class ParsingLogService {
                         .build());
             }
 
-            // 5. 파싱 결과 일괄 저장
+            // 5. 파싱 결과 일괄 저장 (재파싱 시 기존 결과를 지우고 새로 저장 - 항상 덮어쓰기)
+            parsingLogRepository.deleteByLogFileId(logFileId);
             parsingLogRepository.saveAll(parsedLogs);
-            log.info("로그 파일 파싱 완료 - 파일 ID: {}, 총 파싱 라인 수: {}", logFileId, parsedLogs.size());
+
+            systemLogRepository.deleteByLogFileId(logFileId);
+            systemLogRepository.saveAll(systemLogs);
+
+            log.info("로그 파일 파싱 완료 - 파일 ID: {}, 총 파싱 라인 수: {}, 시스템 로그 수: {}",
+                    logFileId, parsedLogs.size(), systemLogs.size());
 
             return logFile.getId();
 
@@ -119,6 +152,15 @@ public class ParsingLogService {
             log.error("로그 파일 읽기 중 오류 발생", e);
             throw new RuntimeException("로그 파일 파싱 실패", e);
         }
+    }
+
+    // rawMessage 안에 활성화된 시스템 로그 키워드가 하나라도 포함되어 있는지 검사 (대소문자 무시)
+    private boolean containsAnyKeyword(String rawMessage, List<String> keywords) {
+        if (rawMessage == null || keywords.isEmpty()) {
+            return false;
+        }
+        String lower = rawMessage.toLowerCase();
+        return keywords.stream().anyMatch(lower::contains);
     }
 
     /**

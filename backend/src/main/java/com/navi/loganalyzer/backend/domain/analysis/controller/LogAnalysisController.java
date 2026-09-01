@@ -1,13 +1,11 @@
 package com.navi.loganalyzer.backend.domain.analysis.controller;
 
-import com.navi.loganalyzer.backend.domain.analysis.dto.LogAnalysisResponseDto;
+import com.navi.loganalyzer.backend.domain.analysis.dto.LogFlowResultDto;
 import com.navi.loganalyzer.backend.domain.analysis.service.LogAnalysisService;
 import com.navi.loganalyzer.backend.global.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/logs/analysis")
@@ -21,11 +19,11 @@ public class LogAnalysisController {
      * GET http://localhost:8081/api/v1/logs/analysis/flow/{logFileId}
      */
     @GetMapping("/flow/{logFileId}")
-    public ResponseEntity<ApiResponse<List<LogAnalysisResponseDto>>> getFileFlow(
+    public ResponseEntity<ApiResponse<LogFlowResultDto>> getFileFlow(
             @PathVariable("logFileId") Long logFileId) {
 
-        List<LogAnalysisResponseDto> treeResponse = logAnalysisService.getLogFlowTree(logFileId);
-        return ResponseEntity.ok(ApiResponse.ok("로그 파일 분석 FLOW 조회가 완료되었습니다.", treeResponse));
+        LogFlowResultDto response = logAnalysisService.getLogFlowTree(logFileId);
+        return ResponseEntity.ok(ApiResponse.ok("로그 파일 분석 FLOW 조회가 완료되었습니다.", response));
     }
 
     /**
@@ -33,10 +31,10 @@ public class LogAnalysisController {
      * GET http://localhost:8081/api/v1/logs/analysis/result/{logFileId}
      */
     @GetMapping("/result/{logFileId}")
-    public ResponseEntity<ApiResponse<List<LogAnalysisResponseDto>>> getSavedFileFlow(
+    public ResponseEntity<ApiResponse<LogFlowResultDto>> getSavedFileFlow(
             @PathVariable("logFileId") Long logFileId) {
 
-        List<LogAnalysisResponseDto> treeResponse = logAnalysisService.getSavedLogFlowTree(logFileId);
-        return ResponseEntity.ok(ApiResponse.ok("저장된 로그 분석 결과 조회가 완료되었습니다.", treeResponse));
+        LogFlowResultDto response = logAnalysisService.getSavedLogFlowTree(logFileId);
+        return ResponseEntity.ok(ApiResponse.ok("저장된 로그 분석 결과 조회가 완료되었습니다.", response));
     }
 }

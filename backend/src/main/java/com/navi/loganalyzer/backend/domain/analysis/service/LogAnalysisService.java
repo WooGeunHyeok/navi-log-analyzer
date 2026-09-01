@@ -3,6 +3,8 @@ package com.navi.loganalyzer.backend.domain.analysis.service;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.navi.loganalyzer.backend.domain.analysis.dto.LogAnalysisResponseDto;
+import com.navi.loganalyzer.backend.domain.analysis.dto.LogFlowResultDto;
+import com.navi.loganalyzer.backend.domain.analysis.dto.SystemLogResponseDto;
 import com.navi.loganalyzer.backend.domain.analysis.entity.NaviLogeDataEntity;
 import com.navi.loganalyzer.backend.domain.analysis.repository.LogAnalysisRepository;
 import com.navi.loganalyzer.backend.domain.analysis.repository.NaviLogeDataRepository;
@@ -10,6 +12,7 @@ import com.navi.loganalyzer.backend.domain.analysis.util.LogStringUtils;
 import com.navi.loganalyzer.backend.domain.parsing.entity.ParsingLog;
 import com.navi.loganalyzer.backend.domain.analysis.entity.LogAnalysis;
 import com.navi.loganalyzer.backend.domain.parsing.repository.ParsingLogRepository;
+import com.navi.loganalyzer.backend.domain.parsing.repository.SystemLogRepository;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +33,7 @@ public class LogAnalysisService {
     private final ParsingLogRepository parsingLogRepository;
     private final NaviLogeDataRepository naviLogeDataRepository;
     private final LogAnalysisRepository logAnalysisRepository;
+    private final SystemLogRepository systemLogRepository;
     private final ObjectMapper objectMapper; // Spring 컨테이너의 ObjectMapper 주입
 
     /**
@@ -46,13 +50,15 @@ public class LogAnalysisService {
      * 같은 logFileId로 다시 호출되면 기존 분석 결과를 지우고 새로 저장한다(항상 덮어쓰기).
      */
     @Transactional
-    public List<LogAnalysisResponseDto> getLogFlowTree(Long logFileId) {
+    public LogFlowResultDto getLogFlowTree(Long logFileId) {
+
+        List<SystemLogResponseDto> systemLogs = getSystemLogs(logFileId);
 
         // 1. logFileId 에 해당하는 로그 목록을 step 순으로 조회
         List<ParsingLog> ParsingLogList = parsingLogRepository.findByFileIdOrderByStepAsc(logFileId);
 
         if (ParsingLogList.isEmpty()) {
-            return Collections.emptyList();
+            return LogFlowResultDto.builder().tree(Collections.emptyList()).systemLogs(systemLogs).build();
         }
 
         // 사전 DB 정밀 매칭 진행
@@ -68,7 +74,7 @@ public class LogAnalysisService {
         logAnalysisRepository.deleteByFileId(logFileId);
         logAnalysisRepository.saveAll(result.getAnalyzedEntities());
 
-        return result.getRootNodes();
+        return LogFlowResultDto.builder().tree(result.getRootNodes()).systemLogs(systemLogs).build();
     }
 
     /**
@@ -76,14 +82,26 @@ public class LogAnalysisService {
      * step 순으로 읽으면서 저장된 depth 값만으로 트리를 복원하므로 사전 DB 조회가 필요 없다.
      */
     @Transactional(readOnly = true)
-    public List<LogAnalysisResponseDto> getSavedLogFlowTree(Long logFileId) {
+    public LogFlowResultDto getSavedLogFlowTree(Long logFileId) {
+        List<SystemLogResponseDto> systemLogs = getSystemLogs(logFileId);
+
         List<LogAnalysis> savedList = logAnalysisRepository.findByFileIdOrderByStepAsc(logFileId);
 
         if (savedList.isEmpty()) {
-            return Collections.emptyList();
+            return LogFlowResultDto.builder().tree(Collections.emptyList()).systemLogs(systemLogs).build();
         }
 
-        return buildTreeFromSavedDepth(savedList);
+        return LogFlowResultDto.builder().tree(buildTreeFromSavedDepth(savedList)).systemLogs(systemLogs).build();
+    }
+
+    /**
+     * 사전 조건 판별용 시스템 로그 조회 (파싱 단계에서 키워드 매칭되어 저장된 것).
+     * 흐름도 트리와 무관하게 독립적으로 존재하므로 tree가 비어있어도 항상 조회한다.
+     */
+    private List<SystemLogResponseDto> getSystemLogs(Long logFileId) {
+        return systemLogRepository.findByFileIdOrderByTimestampAsc(logFileId).stream()
+                .map(SystemLogResponseDto::fromEntity)
+                .collect(Collectors.toList());
     }
 
     /**
