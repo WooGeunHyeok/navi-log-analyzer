@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import TreeNode from './TreeNode.jsx'
+import PreconditionChecklist from './PreconditionChecklist.jsx'
 import { collectExpandableIds, filterTree } from '../utils/treeFilter.js'
 import styles from './AnalysisResultView.module.css'
 
@@ -9,7 +10,7 @@ const MATCH_FILTER_OPTIONS = [
   { value: 'all', label: '전체' },
 ]
 
-function AnalysisResultView({ treeData }) {
+function AnalysisResultView({ tree, systemLogs }) {
   const [searchTerm, setSearchTerm] = useState('')
   const [matchFilter, setMatchFilter] = useState('matched')
   const [collapsedIds, setCollapsedIds] = useState(() => new Set())
@@ -21,12 +22,12 @@ function AnalysisResultView({ treeData }) {
 
   const filteredTree = useMemo(
     () =>
-      filterTree(treeData, {
+      filterTree(tree, {
         searchTerm,
         matchedOnly: matchFilter === 'matched',
         unmatchedOnly: matchFilter === 'unmatched',
       }),
-    [treeData, searchTerm, matchFilter],
+    [tree, searchTerm, matchFilter],
   )
 
   const expandableIds = useMemo(() => collectExpandableIds(filteredTree), [filteredTree])
@@ -50,6 +51,7 @@ function AnalysisResultView({ treeData }) {
 
   return (
     <div className={styles.wrapper}>
+      <PreconditionChecklist tree={tree} systemLogs={systemLogs} />
       <div className={styles.controls}>
         <input
           type="text"

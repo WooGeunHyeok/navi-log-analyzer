@@ -48,25 +48,28 @@ describe('App', () => {
     parseDeferred.resolve(1)
 
     expect(await screen.findByText('분석 중...')).toBeInTheDocument()
-    analyzeDeferred.resolve([
-      {
-        id: 1,
-        fileId: 1,
-        step: 1,
-        timestamp: '01-01 00:00:00.000',
-        threadId: 1,
-        logLevel: 'I',
-        layer: 'CONTAINER',
-        rawMessage: 'raw',
-        fileName: 'NaviMain.java',
-        filePath: '/NaviMain.java',
-        functionName: 'onCreate',
-        lineNumber: 10,
-        matchType: 'EXACT_KEY',
-        depth: 0,
-        children: [],
-      },
-    ])
+    analyzeDeferred.resolve({
+      tree: [
+        {
+          id: 1,
+          fileId: 1,
+          step: 1,
+          timestamp: '01-01 00:00:00.000',
+          threadId: 1,
+          logLevel: 'I',
+          layer: 'CONTAINER',
+          rawMessage: 'raw',
+          fileName: 'NaviMain.java',
+          filePath: '/NaviMain.java',
+          functionName: 'onCreate',
+          lineNumber: 10,
+          matchType: 'EXACT_KEY',
+          depth: 0,
+          children: [],
+        },
+      ],
+      systemLogs: [],
+    })
 
     expect(await screen.findByText('onCreate')).toBeInTheDocument()
   })
