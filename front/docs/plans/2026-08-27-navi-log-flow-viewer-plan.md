@@ -128,7 +128,7 @@ describe('uploadLogFile', () => {
     expect(fileId).toBe(42)
     expect(fetchMock).toHaveBeenCalledTimes(1)
     const [url, options] = fetchMock.mock.calls[0]
-    expect(url).toBe('http://localhost:8081/api/v1/logs/upload')
+    expect(url).toBe('http://localhost:8080/api/v1/logs/upload')
     expect(options.method).toBe('POST')
     expect(options.body).toBeInstanceOf(FormData)
     expect(options.body.get('file')).toBe(file)
@@ -150,7 +150,7 @@ describe('runParsing', () => {
 
     expect(result).toBe(42)
     const [url, options] = fetchMock.mock.calls[0]
-    expect(url).toBe('http://localhost:8081/api/v1/parsing/42')
+    expect(url).toBe('http://localhost:8080/api/v1/parsing/42')
     expect(options.method).toBe('POST')
   })
 })
@@ -164,7 +164,7 @@ describe('runAnalysisFlow', () => {
 
     expect(result).toEqual(tree)
     const [url] = fetchMock.mock.calls[0]
-    expect(url).toBe('http://localhost:8081/api/v1/logs/analysis/flow/42')
+    expect(url).toBe('http://localhost:8080/api/v1/logs/analysis/flow/42')
   })
 
   it('HTTP 응답이 실패(ok=false)이고 메시지가 없으면 상태 코드를 포함한 에러를 던진다', async () => {
@@ -185,7 +185,7 @@ Expected: FAIL — `src/api/logAnalyzer.js`가 없어서 import 에러 발생.
 Create `src/api/logAnalyzer.js`:
 
 ```js
-const BASE_URL = 'http://localhost:8081'
+const BASE_URL = 'http://localhost:8080'
 
 export const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024
 
@@ -1698,7 +1698,7 @@ git commit -m "[FRONT] App 상태 머신 통합 및 템플릿 데모 코드 정�
 
 - [ ] **Step 1: 백엔드 서버 기동 확인**
 
-`backend/` 프로젝트를 `http://localhost:8081`에서 구동한다 (이미 떠 있다면 생략).
+`backend/` 프로젝트를 `http://localhost:8080`에서 구동한다 (이미 떠 있다면 생략).
 
 - [ ] **Step 2: 프론트 개발 서버 기동**
 

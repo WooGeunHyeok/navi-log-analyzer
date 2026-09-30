@@ -1,4 +1,4 @@
-const BASE_URL = 'http://localhost:8081'
+const BASE_URL = 'http://localhost:8080'
 
 export const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024
 

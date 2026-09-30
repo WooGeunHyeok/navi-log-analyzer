@@ -11,7 +11,7 @@
 
 ## API 계약 (백엔드, 변경 없음)
 
-서버: `http://localhost:8081` (CORS 전체 오픈, context-path 없음)
+서버: `http://localhost:8080` (CORS 전체 오픈, context-path 없음)
 
 공통 응답: `{ success: boolean, message: string, data: T }` (null 필드는 JSON에서 생략됨)
 
@@ -96,7 +96,7 @@ src/
 - `runParsing(fileId)`: POST, 바디 없음.
 - `runAnalysisFlow(fileId)`: GET.
 - 공통 응답 파싱 헬퍼 하나: HTTP 에러이거나 `success: false`면 `message`를 담아 throw. 셋 다 이 헬퍼를 통해 결과를 반환한다.
-- 서버 주소(`http://localhost:8081`)는 파일 상단 상수로 고정.
+- 서버 주소(`http://localhost:8080`)는 파일 상단 상수로 고정.
 
 ## 트리 결과 화면 상세
 
