@@ -1,0 +1,70 @@
+# 실행: docker compose up --build   /   종료: docker compose down
+# 접속: front  http://localhost:5566  /  backend http://localhost:8080  /  db localhost:3307
+services:
+  # ---------- MariaDB ----------
+  db:
+    image: mariadb:11
+    environment:
+      # 아래 값들로 이미지가 최초 기동 시 DB와 사용자를 자동 생성한다. (값은 .env 에서 읽음)
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MARIADB_DATABASE: ${DB_NAME}
+      MARIADB_USER: ${DB_USERNAME}
+      MARIADB_PASSWORD: ${DB_PASSWORD}
+      TZ: Asia/Seoul
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    ports:
+      # 호스트 3307 → 컨테이너 3306 (내 PC에 설치된 MariaDB와 포트 충돌 방지)
+      - "3307:3306"
+    volumes:
+      # named volume: 컨테이너를 지워도 DB 데이터가 유지된다.
+      - db-data:/var/lib/mysql
+      # 최초 기동 시 실행할 초기화 SQL
+      - ./docker/db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      # DB가 실제로 접속 가능해질 때까지 backend 기동을 미루기 위한 검사
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # ---------- Backend (Spring Boot) ----------
+  backend:
+    build: ./backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      # 컨테이너끼리는 서비스 이름(db)이 곧 호스트명이고, 컨테이너 내부 포트(3306)를 쓴다.
+      LOCAL_DB_URL: jdbc:mariadb://db:3306/${DB_NAME}?useSSL=false&characterEncoding=UTF-8&serverTimezone=Asia/Seoul
+      DB_DRIVER: org.mariadb.jdbc.Driver
+      LOCAL_DB_USERNAME: ${DB_USERNAME}
+      LOCAL_DB_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "8080:8080"
+    volumes:
+      # 업로드된 로그 파일 보존 (설정: file.upload-dir=./uploads/logs, 작업 폴더 /app)
+      - uploads:/app/uploads
+
+  # ---------- Front (Vite dev 서버) ----------
+  front:
+    image: node:22
+    working_dir: /app
+    # front 코드는 feature/front_main 브랜치를 git worktree 로 체크아웃한 폴더에 있다.
+    #   git worktree add ../navi-front feature/front_main
+    volumes:
+      - ${FRONT_DIR:-../navi-front/front}:/app
+      # 호스트(mac)의 node_modules 와 섞이지 않도록 컨테이너 전용 볼륨으로 분리
+      - front-node-modules:/app/node_modules
+    command: sh -c "npm ci && npm run dev"
+    ports:
+      # 호스트 5566 → 컨테이너 8080 (vite.config.js 의 server.port)
+      - "5566:8080"
+    environment:
+      # 일부 환경에서 파일 변경 감지(HMR)가 안 될 때를 대비한 polling
+      CHOKIDAR_USEPOLLING: "true"
+
+volumes:
+  db-data:
+  uploads:
+  front-node-modules:
